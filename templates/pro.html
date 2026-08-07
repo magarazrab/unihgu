@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Pro — ХГУ Тест{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Pro</h1>
+        <p>
+            {% if is_pro %}
+                {% if lang == 'en' %}Your Pro is active until{% elif lang == 'tg' %}Pro-и шумо фаъол то{% else %}Ваш Pro активен до{% endif %}
+                <strong>{{ pro_until[:10] if pro_until else '' }}</strong>
+            {% else %}
+                {% if lang == 'en' %}Unlock more features{% elif lang == 'tg' %}Имкониятҳои бештар кушоед{% else %}Откройте больше возможностей{% endif %}
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="card">
+        <div class="card-title">
+            {% if lang == 'en' %}Pro benefits{% elif lang == 'tg' %}Имкониятҳои Pro{% else %}Возможности Pro{% endif %}
+        </div>
+        <ul class="pro-features">
+            <li>{% if lang == 'en' %}Advanced tests{% elif lang == 'tg' %}Тестҳои пешрафта{% else %}Продвинутые тесты{% endif %}</li>
+            <li>{% if lang == 'en' %}Answer review{% elif lang == 'tg' %}Таҳлили ҷавобҳо{% else %}Разбор ответов{% endif %}</li>
+            <li>{% if lang == 'en' %}Practice mode{% elif lang == 'tg' %}Режими машқ{% else %}Режим тренировки{% endif %}</li>
+            <li>{% if lang == 'en' %}Hints{% elif lang == 'tg' %}Ишораҳо{% else %}Подсказки{% endif %}</li>
+        </ul>
+        {% if packages %}
+        <div style="margin-top:12px;">
+            {% for key, pkg in packages.items() %}
+            <div style="padding:8px 0; border-bottom:1px solid var(--border);">
+                <strong>{{ pkg.label[lang] if lang in pkg.label else pkg.label.ru }}</strong>
+                — {{ pkg.price }} {% if lang == 'en' %}somoni{% elif lang == 'tg' %}сомонӣ{% else %}сомони{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    {% if not is_pro %}
+    <div class="card">
+        <div class="card-title">
+            {% if lang == 'en' %}Buy Pro{% elif lang == 'tg' %}Харид кардани Pro{% else %}Купить Pro{% endif %}
+        </div>
+        <p style="margin-bottom:12px; color:var(--text-muted);">
+            {% if lang == 'en' %}Transfer money, then upload a payment screenshot. Admin will approve.{% elif lang == 'tg' %}Пулро гузаронед ва скриншот бор кунед. Админ тасдиқ мекунад.{% else %}Переведите деньги и загрузите скриншот. Админ проверит и одобрит.{% endif %}
+        </p>
+
+        <div class="card-details">
+            <div><strong>DC:</strong> {{ admin_card.dc }}</div>
+            <div><strong>Эсхата:</strong> {{ admin_card.eskhata }}</div>
+            <div><strong>Алиф:</strong> {{ admin_card.alif }}</div>
+            <div><strong>{% if lang == 'en' %}Holder{% elif lang == 'tg' %}Соҳиб{% else %}Владелец{% endif %}:</strong> {{ admin_card.holder }}</div>
+            <div><strong>{% if lang == 'en' %}Phone{% elif lang == 'tg' %}Телефон{% else %}Телефон{% endif %}:</strong> {{ admin_card.phone }}</div>
+        </div>
+
+        <form method="POST" action="{{ url_for('buy_pro') }}" enctype="multipart/form-data">
+            <div class="form-group">
+                <label>{% if lang == 'en' %}Package{% elif lang == 'tg' %}Пакет{% else %}Пакет{% endif %}</label>
+                <select name="package">
+                    {% for key, pkg in packages.items() %}
+                    <option value="{{ key }}" {% if key == '2m' %}selected{% endif %}>
+                        {{ pkg.label[lang] if lang in pkg.label else pkg.label.ru }} — {{ pkg.price }} сом.
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>{% if lang == 'en' %}Payment method{% elif lang == 'tg' %}Усули пардохт{% else %}Способ оплаты{% endif %}</label>
+                <div class="payment-methods">
+                    <label><input type="radio" name="payment_method" value="dc" checked><span>DC</span></label>
+                    <label><input type="radio" name="payment_method" value="eskhata"><span>Эсхата</span></label>
+                    <label><input type="radio" name="payment_method" value="alif"><span>Алиф</span></label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="screenshot">{% if lang == 'en' %}Screenshot{% elif lang == 'tg' %}Скриншот{% else %}Скриншот оплаты{% endif %}</label>
+                <input type="file" id="screenshot" name="screenshot" accept="image/*" required>
+            </div>
+            <button type="submit" class="btn btn-accent btn-block">
+                {% if lang == 'en' %}Submit{% elif lang == 'tg' %}Фиристодан{% else %}Отправить заявку{% endif %}
+            </button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

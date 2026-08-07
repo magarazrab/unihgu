@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#1a5f7a">
+    <link rel="manifest" href="/manifest.json">
+    <title>Регистрация — ХГУ Тест</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+      #splash {
+        position: fixed; inset: 0; background: #1a5f7a; z-index: 9999;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: #fff; transition: opacity .4s;
+      }
+      #splash.hide { opacity: 0; pointer-events: none; }
+      .pencil { font-size: 3rem; animation: write 1.2s ease-in-out infinite; }
+      @keyframes write {
+        0%, 100% { transform: rotate(-8deg) translateY(0); }
+        50% { transform: rotate(8deg) translateY(-6px); }
+      }
+      .bar {
+        width: min(280px, 80vw); height: 10px; background: rgba(255,255,255,.25);
+        border-radius: 8px; overflow: hidden; margin-top: 20px;
+      }
+      .bar > i { display: block; height: 100%; width: 0; background: #fff; border-radius: 8px; }
+    </style>
+</head>
+<body>
+<div id="splash">
+  <div class="pencil">✎</div>
+  <p style="margin-top:12px;font-weight:600;">ХГУ Тест</p>
+  <div class="bar"><i id="prog"></i></div>
+  <p id="pct" style="margin-top:8px;font-size:.9rem;">0%</p>
+</div>
+
+<div class="auth-page" id="authUI" style="visibility:hidden;">
+  <div class="auth-card">
+    <h1>Регистрация</h1>
+    <p class="subtitle">Создайте аккаунт</p>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for cat, msg in messages %}<div class="alert alert-{{ cat }}">{{ msg }}</div>{% endfor %}{% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('register') }}">
+      <div class="form-group"><label>ФИО</label><input type="text" name="full_name" required autocomplete="name"></div>
+      <div class="form-group"><label>Email (логин)</label><input type="email" name="email" required autocomplete="username"></div>
+      <div class="form-group"><label>Пароль</label><input type="password" name="password" required minlength="6" autocomplete="new-password"></div>
+      <div class="form-group"><label>Повтор пароля</label><input type="password" name="password2" required minlength="6" autocomplete="new-password"></div>
+      <div class="form-group">
+        <label>Тип устройства</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <label style="font-weight:normal;"><input type="radio" name="device_type" value="mobile" checked> Телефон</label>
+          <label style="font-weight:normal;"><input type="radio" name="device_type" value="tablet"> Планшет</label>
+          <label style="font-weight:normal;"><input type="radio" name="device_type" value="desktop"> ПК</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Язык</label>
+        <select name="language">
+          <option value="ru">Русский</option>
+          <option value="tg">Тоҷикӣ</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+        <div class="form-group">
+          <label>Часовой пояс (СНГ) *</label>
+          <select name="timezone" required>
+            <option value="">— Выберите страну / пояс —</option>
+            {% for tz, label in cis_timezones %}
+            <option value="{{ tz }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+          <small style="color:#666;">Обязательно. Время в приложении будет по выбранному поясу.</small>
+        </div>
+
+      <button type="submit" class="btn btn-primary btn-block">Зарегистрироваться</button>
+    </form>
+    <p style="text-align:center;margin-top:16px;font-size:.9rem;">
+      <a href="{{ url_for('login') }}">Уже есть аккаунт?</a>
+    </p>
+    <p style="text-align:center;font-size:.8rem;color:var(--text-muted);margin-top:8px;">
+      Face ID включается позже в Настройках
+    </p>
+  </div>
+</div>
+<script>
+(function(){
+  var prog = document.getElementById('prog'), pct = document.getElementById('pct'), splash = document.getElementById('splash');
+  var n = 0;
+  var timer = setInterval(function(){
+    n += 4 + Math.random() * 6;
+    if (n >= 100) { n = 100; clearInterval(timer); }
+    prog.style.width = n + '%';
+    pct.textContent = Math.floor(n) + '%';
+    if (n >= 100) {
+      setTimeout(function(){
+        splash.classList.add('hide');
+        document.getElementById('authUI').style.visibility = 'visible';
+      }, 300);
+    }
+  }, 40);
+})();
+</script>
+</body>
+</html>

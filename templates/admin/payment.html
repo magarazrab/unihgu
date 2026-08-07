@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Реквизиты и настройки{% endblock %}
+{% block content %}
+<div class="container" style="max-width:720px;">
+  <div class="page-header">
+    <h1>Реквизиты и настройки</h1>
+    <p><a href="{{ url_for('admin_dashboard') }}">Панель</a></p>
+  </div>
+  <form method="POST">
+    <div class="card">
+      <div class="card-title">Реквизиты (ручная оплата по скриншоту)</div>
+      <div class="form-group"><label>DC</label><input name="dc" value="{{ card.dc }}" required></div>
+      <div class="form-group"><label>Эсхата</label><input name="eskhata" value="{{ card.eskhata }}" required></div>
+      <div class="form-group"><label>Алиф</label><input name="alif" value="{{ card.alif }}" required></div>
+      <div class="form-group"><label>Владелец</label><input name="holder" value="{{ card.holder }}" required></div>
+      <div class="form-group"><label>Телефон</label><input name="phone" value="{{ card.phone }}" required></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Лимит попыток экзамена</div>
+      <div class="form-group">
+        <label>Макс. экзаменов на студента в сутки (0 = без лимита)</label>
+        <input type="number" name="max_exam_attempts" value="{{ max_exam_attempts }}" min="0" max="50">
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Резервная копия БД</div>
+      <div class="form-group">
+        <label>Webhook URL (необяз.)</label>
+        <input name="backup_webhook" value="{{ backup_webhook }}" placeholder="https://...">
+      </div>
+      <p><a class="btn btn-outline btn-sm" href="{{ url_for('admin_backup') }}">Скачать БД сейчас</a></p>
+    </div>
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+  </form>
+</div>
+{% endblock %}

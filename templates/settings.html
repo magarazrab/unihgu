@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}{% if lang == 'en' %}Settings{% elif lang == 'tg' %}Танзимот{% else %}Настройки{% endif %} — ХГУ Тест{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>{% if lang == 'en' %}Settings{% elif lang == 'tg' %}Танзимот{% else %}Настройки{% endif %}</h1>
+    </div>
+
+    <div class="card">
+        <div class="card-title">{% if lang == 'en' %}Full name{% elif lang == 'tg' %}НОМУ насаб{% else %}ФИО{% endif %}</div>
+        <form method="POST" action="{{ url_for('settings') }}">
+            <input type="hidden" name="action" value="change_name">
+            <div class="form-group">
+                <input type="text" name="full_name" value="{{ full_name or '' }}" required placeholder="Иванов Иван Иванович">
+            </div>
+            <button type="submit" class="btn btn-primary">{% if lang == 'en' %}Save name{% elif lang == 'tg' %}Нигоҳ доштан{% else %}Сохранить ФИО{% endif %}</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="card-title">{% if lang == 'en' %}Change password{% elif lang == 'tg' %}Парол{% else %}Сменить пароль{% endif %}</div>
+        <form method="POST" action="{{ url_for('settings') }}">
+            <input type="hidden" name="action" value="change_password">
+            <div class="form-group">
+                <label>{% if lang == 'en' %}Current{% elif lang == 'tg' %}Ҳозира{% else %}Текущий{% endif %}</label>
+                <input type="password" name="old_password" required>
+            </div>
+            <div class="form-group">
+                <label>{% if lang == 'en' %}New{% elif lang == 'tg' %}Нав{% else %}Новый{% endif %}</label>
+                <input type="password" name="new_password" required minlength="6">
+            </div>
+            <div class="form-group">
+                <label>{% if lang == 'en' %}Repeat{% elif lang == 'tg' %}Такрор{% else %}Повтор{% endif %}</label>
+                <input type="password" name="new_password2" required minlength="6">
+            </div>
+            <button type="submit" class="btn btn-primary">{% if lang == 'en' %}Save{% elif lang == 'tg' %}Нигоҳ доштан{% else %}Сохранить{% endif %}</button>
+        </form>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:8px;">
+            {% if lang == 'en' %}If you registered with Face ID, set a password to also log in with email later.{% elif lang == 'tg' %}Агар бо Face ID ворид шуда бошед, парол гузоред.{% else %}Если вошли через Face ID — задайте пароль для входа по email.{% endif %}
+        </p>
+    </div>
+
+    <div class="card">
+        <div class="card-title">{% if lang == 'en' %}Language{% elif lang == 'tg' %}Забон{% else %}Язык{% endif %}</div>
+        <form method="POST" action="{{ url_for('settings') }}">
+            <input type="hidden" name="action" value="change_language">
+            <div class="form-group">
+                <select name="language">
+                    <option value="ru" {% if lang == 'ru' %}selected{% endif %}>Русский</option>
+                    <option value="tg" {% if lang == 'tg' %}selected{% endif %}>Тоҷикӣ</option>
+                    <option value="en" {% if lang == 'en' %}selected{% endif %}>English</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">{% if lang == 'en' %}Change{% elif lang == 'tg' %}Иваз{% else %}Изменить{% endif %}</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="card-title">{% if lang == 'en' %}Theme{% elif lang == 'tg' %}Мавзӯъ{% else %}Тема{% endif %}</div>
+        <form method="POST" action="{{ url_for('settings') }}">
+            <input type="hidden" name="action" value="change_theme">
+            <div class="form-group">
+                <select name="theme">
+                    <option value="light" {% if theme == 'light' %}selected{% endif %}>{% if lang == 'en' %}Light{% elif lang == 'tg' %}Равшан{% else %}Светлая{% endif %}</option>
+                    <option value="dark" {% if theme == 'dark' %}selected{% endif %}>{% if lang == 'en' %}Dark{% elif lang == 'tg' %}Торик{% else %}Тёмная{% endif %}</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">{% if lang == 'en' %}Apply{% elif lang == 'tg' %}Татбиқ{% else %}Применить{% endif %}</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="card-title">{% if lang == 'en' %}Sound{% elif lang == 'tg' %}Садо{% else %}Звук{% endif %}</div>
+        <form method="POST" action="{{ url_for('settings') }}">
+            <input type="hidden" name="action" value="change_sound">
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="sound_enabled" value="1" {% if sound_enabled %}checked{% endif %}>
+                    {% if lang == 'en' %}Sounds during test{% elif lang == 'tg' %}Садо дар тест{% else %}Звук во время теста{% endif %}
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary">{% if lang == 'en' %}Save{% elif lang == 'tg' %}Нигоҳ доштан{% else %}Сохранить{% endif %}</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Instagram</div>
+        <a href="{{ instagram_url }}" target="_blank" class="btn btn-accent">Instagram</a>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Face ID</div>
+        <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px;">
+            Вход по лицу на этом устройстве. Отпечаток пальца не используется.
+        </p>
+        <p id="faceStatus" style="margin-bottom:10px;font-size:0.9rem;"></p>
+        <button type="button" class="btn btn-primary" id="btnEnableFace">Включить Face ID</button>
+        <button type="button" class="btn btn-outline" id="btnDisableFace" style="margin-left:8px;display:none;">Отключить</button>
+    </div>
+
+    <div id="faceModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5000;align-items:center;justify-content:center;padding:16px;">
+      <div style="background:var(--card-bg,#fff);border-radius:16px;padding:20px;max-width:360px;width:100%;text-align:center;">
+        <h3 style="margin:0 0 12px;">Сохранить лицо</h3>
+        <video id="faceVideo" autoplay playsinline muted style="width:100%;max-height:240px;border-radius:12px;background:#111;transform:scaleX(-1);"></video>
+        <canvas id="faceCanvas" style="display:none;"></canvas>
+        <p id="faceHint" style="font-size:0.85rem;color:var(--text-muted);margin:10px 0;">Смотрите в камеру</p>
+        <button type="button" class="btn btn-primary" id="btnSaveFace">Сохранить Face ID</button>
+        <button type="button" class="btn btn-outline" id="btnCancelFace" style="margin-left:8px;">Отмена</button>
+      </div>
+    </div>
+
+<script>
+(function(){
+  var KEY = 'hgu_face_id';
+  var statusEl = document.getElementById('faceStatus');
+  var btnEn = document.getElementById('btnEnableFace');
+  var btnDis = document.getElementById('btnDisableFace');
+  var modal = document.getElementById('faceModal');
+  var video = document.getElementById('faceVideo');
+  var stream = null;
+
+  function refresh() {
+    var id = localStorage.getItem(KEY);
+    if (id) {
+      statusEl.textContent = 'Face ID включён на этом устройстве';
+      statusEl.style.color = '#2a9d8f';
+      btnDis.style.display = 'inline-block';
+    } else {
+      statusEl.textContent = 'Face ID выключен';
+      statusEl.style.color = 'var(--text-muted)';
+      btnDis.style.display = 'none';
+    }
+  }
+  refresh();
+
+  function stopCam() {
+    if (stream) { stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
+    video.srcObject = null;
+  }
+
+  btnEn.addEventListener('click', function(){
+    if (!window.isSecureContext) {
+      alert('Нужен HTTPS (Render). Face ID недоступен.');
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('На этом устройстве камера / Face ID недоступны.');
+      return;
+    }
+    modal.style.display = 'flex';
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+      .then(function(s){
+        stream = s;
+        video.srcObject = s;
+      })
+      .catch(function(){
+        modal.style.display = 'none';
+        alert('Нет доступа к камере. Разрешите камеру или Face ID в настройках телефона.');
+      });
+  });
+
+  document.getElementById('btnCancelFace').addEventListener('click', function(){
+    stopCam();
+    modal.style.display = 'none';
+  });
+
+  document.getElementById('btnSaveFace').addEventListener('click', function(){
+    var canvas = document.getElementById('faceCanvas');
+    canvas.width = video.videoWidth || 320;
+    canvas.height = video.videoHeight || 240;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    var photo = canvas.toDataURL('image/jpeg', 0.7);
+    var credId = 'face_' + Date.now() + '_' + Math.random().toString(36).slice(2, 12);
+
+    function send(id) {
+      return fetch('/api/face/enroll', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ credential_id: id, photo: photo, device_name: navigator.userAgent.slice(0,80) })
+      }).then(function(r){ return r.json(); });
+    }
+
+    function done(d) {
+      stopCam();
+      modal.style.display = 'none';
+      if (d.ok) {
+        try { localStorage.setItem(KEY, d.credential_id || credId); } catch(e){}
+        alert('Face ID сохранён. При входе нажмите «Face ID — войти».');
+        refresh();
+      } else {
+        alert(d.error || 'Ошибка сохранения');
+      }
+    }
+
+    // Попытка WebAuthn (настоящее лицо на устройстве)
+    if (window.PublicKeyCredential) {
+      navigator.credentials.create({
+        publicKey: {
+          challenge: Uint8Array.from(credId, function(c){ return c.charCodeAt(0); }),
+          rp: { name: 'HGU Test', id: location.hostname },
+          user: {
+            id: Uint8Array.from(credId, function(c){ return c.charCodeAt(0); }),
+            name: credId,
+            displayName: 'HGU Face'
+          },
+          pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+          authenticatorSelection: {
+            authenticatorAttachment: 'platform',
+            userVerification: 'required',
+            residentKey: 'preferred'
+          },
+          timeout: 60000
+        }
+      }).then(function(cred){
+        if (cred && cred.id) credId = cred.id;
+        return send(credId);
+      }).then(done).catch(function(){
+        // устройство без Face ID — нельзя
+        stopCam();
+        modal.style.display = 'none';
+        alert('Face ID на этом устройстве недоступен. Включить невозможно.');
+      });
+    } else {
+      stopCam();
+      modal.style.display = 'none';
+      alert('Face ID на этом устройстве недоступен.');
+    }
+  });
+
+  btnDis.addEventListener('click', function(){
+    if (!confirm('Отключить Face ID на этом устройстве?')) return;
+    localStorage.removeItem(KEY);
+    refresh();
+  });
+})();
+</script>
+
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Студенты{% endblock %}
+{% block content %}
+<div class="container" style="max-width:1100px;">
+  <h1>Аккаунты студентов</h1>
+  <div class="card">
+    <div class="card-title">Добавить</div>
+    <form method="POST" action="{{ url_for('admin_student_add') }}" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;">
+      <div class="form-group"><label>ФИО</label><input name="full_name" required></div>
+      <div class="form-group"><label>Логин (email)</label><input name="email" type="email" required></div>
+      <div class="form-group"><label>Пароль</label><input name="password" value="student123"></div>
+      <button class="btn btn-primary" type="submit">Добавить</button>
+    </form>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th>ФИО</th><th>Логин</th><th>Пароль</th><th>Pro</th><th>Устройство</th><th></th></tr></thead>
+      <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.full_name }}</td>
+        <td>{{ u.email }}</td>
+        <td><code>{{ u.password_plain if u.password_plain is defined and u.password_plain else '—' }}</code></td>
+        <td>{% if u.is_pro %}Да{% else %}Нет{% endif %}</td>
+        <td>{{ u.device_type if u.device_type is defined else '—' }}</td>
+        <td>{% if not u.is_admin %}
+          <form method="POST" action="{{ url_for('admin_student_delete', uid=u.id) }}" onsubmit="return confirm('Удалить?');">
+            <button class="btn btn-danger btn-sm" type="submit">Удалить</button>
+          </form>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Чат — Админ{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <h1>Чат со студентами</h1>
+    <p><a href="{{ url_for('admin_dashboard') }}">Назад в панель</a></p>
+  </div>
+  <div class="card" style="display:flex;gap:12px;min-height:420px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:220px;max-width:300px;border-right:1px solid #e0e0e0;padding-right:8px;">
+      <div style="font-weight:600;margin-bottom:8px;">Студенты</div>
+      <div id="chat-peers" style="max-height:380px;overflow:auto;"></div>
+    </div>
+    <div style="flex:2;min-width:260px;display:flex;flex-direction:column;">
+      <div id="chat-peer-title" style="font-weight:600;margin-bottom:8px;color:#666;">Выберите студента</div>
+      <div id="chat-msgs" style="flex:1;min-height:280px;max-height:340px;overflow:auto;background:#f7f9fc;border-radius:10px;padding:10px;margin-bottom:10px;"></div>
+      <form id="chat-form" style="display:flex;gap:8px;">
+        <input type="text" id="chat-input" class="form-control" placeholder="Сообщение..." style="flex:1;" autocomplete="off">
+        <button type="submit" class="btn btn-primary">Отправить</button>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var peerId = 0;
+  function loadPeers(){
+    fetch('/api/chat/peers').then(function(r){return r.json()}).then(function(d){
+      var box = document.getElementById('chat-peers');
+      box.innerHTML = '';
+      (d.peers||[]).forEach(function(p){
+        var el = document.createElement('div');
+        el.style.cssText = 'padding:8px;border-radius:8px;cursor:pointer;margin-bottom:4px;background:'+(p.id===peerId?'#e8f4fc':'transparent');
+        el.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+(p.online?'#2ecc71':'#bbb')+';margin-right:6px;"></span>'
+          + '<strong>'+ (p.name||'') +'</strong>'
+          + (p.unread? ' <span style="background:#e74c3c;color:#fff;border-radius:10px;padding:0 6px;font-size:.75rem;">'+p.unread+'</span>':'')
+          + '<div style="font-size:.75rem;color:#888;">'+(p.online?'онлайн':(p.last_seen||'офлайн'))+'</div>';
+        el.onclick = function(){ peerId = p.id; document.getElementById('chat-peer-title').textContent = p.name + ' · ' + p.email; loadMsgs(); loadPeers(); };
+        box.appendChild(el);
+      });
+    });
+  }
+  function loadMsgs(){
+    if(!peerId) return;
+    fetch('/api/chat/messages?peer_id='+peerId).then(function(r){return r.json()}).then(function(d){
+      var box = document.getElementById('chat-msgs');
+      box.innerHTML = '';
+      (d.messages||[]).forEach(function(m){
+        var div = document.createElement('div');
+        div.style.cssText = 'margin:6px 0;text-align:'+(m.mine?'right':'left');
+        div.innerHTML = '<span style="display:inline-block;max-width:80%;padding:8px 12px;border-radius:12px;background:'+(m.mine?'#1a5f7a':'#fff')+';color:'+(m.mine?'#fff':'#333')+';box-shadow:0 1px 2px rgba(0,0,0,.06);">'+
+          (m.body||'').replace(/</g,'&lt;') + '<div style="font-size:.7rem;opacity:.7;margin-top:4px;">'+(m.created_at||'')+'</div></span>';
+        box.appendChild(div);
+      });
+      box.scrollTop = box.scrollHeight;
+    });
+  }
+  document.getElementById('chat-form').onsubmit = function(e){
+    e.preventDefault();
+    if(!peerId) return;
+    var inp = document.getElementById('chat-input');
+    var body = (inp.value||'').trim();
+    if(!body) return;
+    fetch('/api/chat/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({receiver_id:peerId,body:body})})
+      .then(function(){ inp.value=''; loadMsgs(); loadPeers(); });
+  };
+  loadPeers();
+  setInterval(function(){ loadPeers(); if(peerId) loadMsgs(); }, 5000);
+})();
+</script>
+{% endblock %}

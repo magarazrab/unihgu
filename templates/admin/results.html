@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Результаты — Админ{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Результаты тестов</h1>
+        <p><a href="{{ url_for('admin_dashboard') }}">Назад в панель</a></p>
+    </div>
+  <p><a class="btn btn-primary btn-sm" href="{{ url_for('admin_export_results') }}">Скачать Excel</a></p>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Студент</th>
+                    <th>Email</th>
+                    <th>Тест</th>
+                    <th>Балл</th>
+                    <th>Оценка</th>
+                    <th>Правильных</th>
+                    <th>Неправильных</th>
+                    <th>Время (сек)</th>
+                    <th>Дата</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in results %}
+                <tr>
+                    <td>{{ r.id }}</td>
+                    <td>{{ r.full_name }}</td>
+                    <td>{{ r.email }}</td>
+                    <td>{{ tests[r.test_id].title.ru if r.test_id in tests else r.test_id }}</td>
+                    <td>{{ '%.1f'|format(r.score|float) }} / {{ '%.0f'|format(r.max_score|float) }}</td>
+                    <td><strong>{{ r._grade if r._grade else "—" }}</strong></td>
+                    <td>{{ r.correct }}</td>
+                    <td>{{ r.incorrect }}</td>
+                    <td>{{ r.duration_seconds }}</td>
+                    <td>{{ r._dt if r._dt else "—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

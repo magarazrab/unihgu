@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Результат — ХГУ{% endblock %}
+{% block content %}
+<div class="container" style="max-width:720px;">
+  <div class="page-header">
+    <h1>{% if lang == 'en' %}Result{% elif lang == 'tg' %}Натиҷа{% else %}Результат{% endif %}</h1>
+  </div>
+  <div class="card" style="text-align:center;">
+    <div style="font-size:.95rem;color:var(--text-muted);">Оценка</div>
+    <div style="font-size:3.5rem;font-weight:800;color:var(--primary);">{{ grade }}</div>
+    <p style="font-size:1.2rem;margin:8px 0;">{{ result.score }} / {{ result.max_score }} {% if lang == 'en' %}points{% else %}баллов{% endif %}</p>
+    <p>{{ percent }}% · {% if lang == 'en' %}Correct{% else %}Верно{% endif %}: {{ result.correct }} · {% if lang == 'en' %}Wrong{% else %}Неверно{% endif %}: {{ result.incorrect }}</p>
+    <p style="color:var(--text-muted);font-size:.9rem;">A 90–100 · B 70–89 · C 60–69 · D 50–59 · F 0–44</p>
+  </div>
+  {% if suggestions %}
+  <div class="card">
+    <div class="card-title">{% if lang == 'en' %}Faculties{% else %}Факультеты{% endif %}</div>
+    <ul>
+      {% for s in suggestions %}
+      <li>{{ s.name }} — {{ s.chance }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% if show_details and details %}
+  <div class="card">
+    <div class="card-title">Разбор (Pro)</div>
+    {% for d in details %}
+    <div style="padding:10px 0;border-bottom:1px solid var(--border);">
+      <strong>{{ loop.index }}. {{ d.question }}</strong>
+      <div style="color: {% if d.is_correct %}var(--success){% else %}var(--danger){% endif %};">
+        {% if d.is_correct %}Верно{% else %}Ошибка{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% elif not show_details %}
+  <div class="card">
+    <p style="color:var(--text-muted);">Разбор ответов доступен только в <a href="{{ url_for('pro_page') }}">Pro</a>.</p>
+  </div>
+  {% endif %}
+  <a href="{{ url_for('dashboard') }}" class="btn btn-primary">На главную</a>
+</div>
+{% endblock %}

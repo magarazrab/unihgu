@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Мои результаты — ХГУ{% endblock %}
+{% block content %}
+<div class="container" style="max-width:800px;">
+  <div class="page-header">
+    <h1>{% if lang == 'en' %}My results{% else %}Мои результаты{% endif %}</h1>
+    <p>Ваши оценки и баллы. Рейтинг других студентов скрыт.</p>
+  </div>
+  {% if best and best.best_pct %}
+  <div class="card">
+    <div class="card-title">Лучший результат</div>
+    <p style="font-size:2rem;font-weight:800;color:var(--primary);">{{ best._grade }}</p>
+    <p style="font-size:1.1rem;">{{ (best.best_pct * 100)|round(0) }}% · {{ '%.0f'|format(best.best_score or 0) }} / 100</p>
+  </div>
+  {% endif %}
+  <div class="card">
+    <table>
+      <thead><tr><th>Тест</th><th>Оценка</th><th>Балл</th><th>Верно</th><th>Неверно</th><th>Дата</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ tests[r.test_id].title.ru if r.test_id in tests else r.test_id }}</td>
+        <td><strong style="font-size:1.1rem;">{{ r._grade }}</strong></td>
+        <td>{{ '%.1f'|format(r.score|float) }} / {{ '%.0f'|format(r.max_score|float) }}</td>
+        <td>{{ r.correct }}</td>
+        <td>{{ r.incorrect }}</td>
+        <td>{{ r._dt }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">Пока нет результатов</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

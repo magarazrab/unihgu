@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Контент — Админ{% endblock %}
+{% block head %}
+<style>
+.admin-wrap{max-width:1280px;margin:0 auto;padding:0 16px 40px}
+.type-card{border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;background:var(--card-bg)}
+.type-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:.75rem;background:#e8f4f8;color:#1a5f7a}
+</style>
+{% endblock %}
+{% block content %}
+<div class="admin-wrap">
+  <div class="page-header">
+    <h1>Контент: предметы и экзамены</h1>
+    <p><a href="{{ url_for('admin_dashboard') }}">Панель</a> · <a href="{{ url_for('admin_payment') }}">Реквизиты</a> · <a href="{{ url_for('admin_social') }}">Соцсети</a></p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">1. Факультеты</div>
+    <form method="POST" action="{{ url_for('admin_faculty_add') }}" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:12px;">
+      <div class="form-group"><label>Название RU</label><input name="name_ru" required></div>
+      <div class="form-group"><label>EN</label><input name="name_en"></div>
+      <div class="form-group"><label>TG</label><input name="name_tg"></div>
+      <button class="btn btn-primary btn-sm" type="submit">Добавить</button>
+    </form>
+    <table><thead><tr><th>ID</th><th>Название</th><th></th></tr></thead>
+    <tbody>
+    {% for f in faculties %}
+    <tr><td>{{ f.id }}</td><td>{{ f.name_ru }}</td>
+      <td><form method="POST" action="{{ url_for('admin_faculty_delete', fid=f.id) }}" onsubmit="return confirm('Удалить?');"><button class="btn btn-danger btn-sm">Удалить</button></form></td>
+    </tr>
+    {% else %}<tr><td colspan="3">Добавьте факультет</td></tr>{% endfor %}
+    </tbody></table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">2. Три вида тестов — создать предмет/экзамен</div>
+    <p style="font-size:.9rem;color:var(--text-muted);">Создайте тест → загрузите файл вопросов → опубликуйте на факультет(ы) с датой и временем (Таджикистан).</p>
+    <form method="POST" action="{{ url_for('admin_test_add') }}">
+      <div class="form-group">
+        <label>Тип</label>
+        <select name="test_type" required>
+          <option value="mcq">1. Один правильный ответ</option>
+          <option value="multi">2. Два правильных ответа</option>
+          <option value="match">3. Соединение предложений</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Код (латиница)</label><input name="code" required placeholder="pravo_mcq"></div>
+      <div class="form-group"><label>Предмет / название</label><input name="title_ru" required placeholder="Право"></div>
+      <div class="form-group"><label>Название предмета (для студента)</label><input name="subject_name" placeholder="Право"></div>
+      <div class="form-group"><label>Длительность таймера (сек), по умолчанию 3600</label><input type="number" name="time_limit" value="3600" min="60"></div>
+      <div class="form-group"><label>Начало экзамена (Таджикистан)</label><input type="datetime-local" name="exam_start"></div>
+      <div class="form-group"><label>Конец экзамена</label><input type="datetime-local" name="exam_end"></div>
+      <div class="form-group"><label><input type="checkbox" name="pro_only" value="1"> Только Pro</label></div>
+      <div class="form-group"><label>Факультеты (можно выбрать позже при публикации)</label>
+        {% for f in faculties %}
+        <label style="display:block;font-weight:normal;"><input type="checkbox" name="faculty_ids" value="{{ f.id }}"> {{ f.name_ru }}</label>
+        {% endfor %}
+      </div>
+      <button class="btn btn-primary" type="submit">Создать</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-title">3. Список — загрузка вопросов и публикация</div>
+    <table>
+      <thead><tr><th>Предмет</th><th>Тип</th><th>Вопросов</th><th>Окно</th><th>Баллы</th><th></th></tr></thead>
+      <tbody>
+      {% for t in tests %}
+      {% set tt = t.test_type if t.test_type is defined and t.test_type else 'mcq' %}
+      <tr>
+        <td><strong>{{ t.subject_name or t.title_ru }}</strong><br><small>{{ t.code }}</small></td>
+        <td><span class="type-badge">{% if tt=='multi' %}Два ответа{% elif tt=='match' %}Соединение{% else %}Один ответ{% endif %}</span></td>
+        <td>{{ qcounts.get(t.id, 0) }}</td>
+        <td style="font-size:.8rem;">{{ t.exam_start or '—' }} → {{ t.exam_end or '—' }}</td>
+        <td>0–100</td>
+        <td>
+          <a class="btn btn-outline btn-sm" href="{{ url_for('admin_test_edit', code=t.code) }}">Вопросы / файл</a>
+          <form method="POST" action="{{ url_for('admin_test_delete', code=t.code) }}" style="display:inline;" onsubmit="return confirm('Удалить?');">
+            <button class="btn btn-danger btn-sm">Удалить</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">Тестов нет</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

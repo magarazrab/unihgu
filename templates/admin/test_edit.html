@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ test.title_ru }} — Вопросы{% endblock %}
+{% block content %}
+{% set tt = test.test_type if test.test_type is defined and test.test_type else 'mcq' %}
+<div class="container" style="max-width:960px;">
+  <h1>{{ test.subject_name or test.title_ru }}</h1>
+  <p>Тип: {% if tt=='multi' %}два ответа{% elif tt=='match' %}соединение{% else %}один ответ{% endif %} · <a href="{{ url_for('admin_content') }}">Назад</a></p>
+
+  <div class="card">
+    <div class="card-title">Загрузить вопросы из файла</div>
+    <p style="font-size:.9rem;color:var(--text-muted);">Форматы: <b>TXT, CSV, JSON, DOCX</b> (не ZIP).<br>
+      TXT пример:<br>
+      <code>1. Столица Таджикистана?<br>A) Худжанд<br>B) Душанбе<br>C) Куляб<br>D) Хорог<br>Ответ: B</code>
+    </p>
+    <form method="POST" action="{{ url_for('admin_test_import', code=test.code) }}" enctype="multipart/form-data">
+      <input type="file" name="file" accept=".txt,.csv,.json,.docx,.text" required>
+      <button class="btn btn-primary" type="submit" style="margin-top:10px;">Загрузить и распознать</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Опубликовать на факультеты</div>
+    <form method="POST" action="{{ url_for('admin_test_publish', code=test.code) }}">
+      <div class="form-group"><label>Предмет</label><input name="subject_name" value="{{ test.subject_name or test.title_ru }}"></div>
+      <div class="form-group"><label>Начало (Таджикистан)</label><input type="datetime-local" name="exam_start" value="{{ test.exam_start or '' }}"></div>
+      <div class="form-group"><label>Конец</label><input type="datetime-local" name="exam_end" value="{{ test.exam_end or '' }}"></div>
+      <div class="form-group"><label>Факультеты (обязательно)</label>
+        {% for f in faculties %}
+        <label style="display:block;font-weight:normal;"><input type="checkbox" name="faculty_ids" value="{{ f.id }}"> {{ f.name_ru }}</label>
+        {% endfor %}
+      </div>
+      <button class="btn btn-accent" type="submit">Опубликовать</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Вопросы ({{ questions|length }}) — при экзамене берётся до 50</div>
+    {% for q in questions %}
+    <div style="padding:10px 0;border-bottom:1px solid var(--border);">
+      <strong>{{ loop.index }}. {{ q.q_ru }}</strong>
+      <div style="font-size:.85rem;color:var(--text-muted);">A) {{ q.opt_a }} · B) {{ q.opt_b }}{% if q.opt_c %} · C) {{ q.opt_c }}{% endif %}{% if q.opt_d %} · D) {{ q.opt_d }}{% endif %}</div>
+      <form method="POST" action="{{ url_for('admin_question_delete', qid=q.id) }}" onsubmit="return confirm('Удалить?');">
+        <button class="btn btn-danger btn-sm" type="submit">Удалить</button>
+      </form>
+    </div>
+    {% else %}<p>Загрузите файл с вопросами</p>{% endfor %}
+  </div>
+</div>
+{% endblock %}

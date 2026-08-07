@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Статистика{% endblock %}
+{% block content %}
+<div class="container" style="max-width:1100px;">
+  <h1>Статистика тестов</h1>
+  <p><a class="btn btn-primary btn-sm" href="{{ url_for('admin_export_results') }}">Экспорт Excel</a></p>
+  <div class="card">
+    <table>
+      <thead><tr><th>Тест</th><th>Попыток</th><th>Верных (сумма)</th><th>Неверных</th><th>Средний %</th></tr></thead>
+      <tbody>
+      {% for t in by_test %}
+      <tr>
+        <td>{{ tests[t.test_id].title.ru if t.test_id in tests else t.test_id }}</td>
+        <td>{{ t.attempts }}</td>
+        <td>{{ t.sum_ok }}</td>
+        <td>{{ t.sum_bad }}</td>
+        <td>{{ ((t.avg_pct or 0)*100)|round(1) }}%</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">Нет данных</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-title">Последние результаты</div>
+    <table>
+      <thead><tr><th>Студент</th><th>Тест</th><th>Балл</th><th>Оценка</th><th>Дата</th><th>Правка (оценка)</th></tr></thead>
+      <tbody>
+      {% for r in recent %}
+      {% set pct = ((r.score / r.max_score * 100) if r.max_score else 0)|round(1) %}
+      {% set g = letter_grade(pct) if letter_grade is defined else '' %}
+      <tr>
+        <td>{{ r.full_name }}</td>
+        <td>{{ r.test_id }}</td>
+        <td>{{ '%.1f'|format(r.score|float) }} / {{ '%.0f'|format(r.max_score|float) }}</td>
+        <td><strong>{{ r.grade if r.grade is defined else '' }}</strong></td>
+        <td>{{ r.created_at[:16] if r.created_at else '' }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('admin_result_edit', rid=r.id) }}" style="display:flex;gap:6px;align-items:center;">
+            <select name="grade" required style="min-width:70px;padding:4px 8px;">
+              {% for L in ['A','B','C','D','F','Fx'] %}
+              <option value="{{ L }}">{{ L }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn btn-sm btn-primary" type="submit">OK</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p style="font-size:.85rem;color:var(--text-muted);margin-top:8px;">
+      Оценка → балл: A≈95, B≈80, C≈65, D≈55, F≈47, Fx≈20 (из 100). Максимум всегда 100 (50×2).
+    </p>
+  </div>
+  <a href="{{ url_for('admin_dashboard') }}">Назад</a>
+</div>
+{% endblock %}

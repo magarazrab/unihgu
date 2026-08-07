@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#1a5f7a">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+    <title>Вход — ХГУ Тест</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+      #splash {
+        position: fixed; inset: 0; background: #1a5f7a; z-index: 9999;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: #fff; transition: opacity .4s;
+      }
+      #splash.hide { opacity: 0; pointer-events: none; }
+      .pencil { font-size: 3rem; animation: write 1.2s ease-in-out infinite; }
+      @keyframes write {
+        0%, 100% { transform: rotate(-8deg) translateY(0); }
+        50% { transform: rotate(8deg) translateY(-6px); }
+      }
+      .bar {
+        width: min(280px, 80vw); height: 10px; background: rgba(255,255,255,.25);
+        border-radius: 8px; overflow: hidden; margin-top: 20px;
+      }
+      .bar > i { display: block; height: 100%; width: 0; background: #fff; border-radius: 8px; }
+      #okAnim {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+        z-index: 10000; align-items: center; justify-content: center;
+      }
+      #okAnim.show { display: flex; }
+      .ok-circle {
+        width: 90px; height: 90px; border-radius: 50%; background: #2a9d8f;
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 2.5rem;
+      }
+    </style>
+</head>
+<body>
+<div id="splash">
+  <div class="pencil">✎</div>
+  <p style="margin-top:12px;font-weight:600;">ХГУ Тест</p>
+  <div class="bar"><i id="prog"></i></div>
+  <p id="pct" style="margin-top:8px;font-size:.9rem;">0%</p>
+</div>
+<div id="okAnim"><div class="ok-circle">✓</div></div>
+
+<div class="auth-page" id="authUI" style="visibility:hidden;">
+  <div class="auth-card">
+    <h1>ХГУ Тест</h1>
+    <p class="subtitle">Вход в аккаунт</p>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for cat, msg in messages %}<div class="alert alert-{{ cat }}">{{ msg }}</div>{% endfor %}{% endif %}
+    {% endwith %}
+
+    <button type="button" class="btn btn-outline btn-block" id="faceLoginBtn">Face ID — войти</button>
+    <p id="faceMsg" style="display:none;text-align:center;font-size:.85rem;margin:8px 0;"></p>
+    <div style="text-align:center;color:var(--text-muted);font-size:.8rem;margin:12px 0;">или логин и пароль</div>
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <div class="form-group"><label>Логин</label><input type="email" name="email" required autocomplete="username"></div>
+      <div class="form-group"><label>Пароль</label><input type="password" name="password" required autocomplete="current-password"></div>
+      <button type="submit" class="btn btn-primary btn-block">Войти</button>
+    </form>
+    <p style="text-align:center;margin-top:18px;font-size:.9rem;">
+      <a href="{{ url_for('register') }}">Ещё нет аккаунта?</a>
+    </p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var prog = document.getElementById('prog'), pct = document.getElementById('pct'), splash = document.getElementById('splash');
+  var n = 0;
+  var timer = setInterval(function(){
+    n += 4 + Math.random() * 6;
+    if (n >= 100) { n = 100; clearInterval(timer); }
+    prog.style.width = n + '%';
+    pct.textContent = Math.floor(n) + '%';
+    if (n >= 100) {
+      setTimeout(function(){
+        splash.classList.add('hide');
+        document.getElementById('authUI').style.visibility = 'visible';
+      }, 300);
+    }
+  }, 40);
+
+  var faceBtn = document.getElementById('faceLoginBtn');
+  var faceMsg = document.getElementById('faceMsg');
+  var KEY = 'hgu_face_id';
+
+  function showMsg(text, ok) {
+    faceMsg.style.display = 'block';
+    faceMsg.style.color = ok ? '#2a9d8f' : '#c0392b';
+    faceMsg.textContent = text;
+  }
+
+  faceBtn.addEventListener('click', function(){
+    if (!window.isSecureContext) {
+      showMsg('Нужен HTTPS (сайт на Render).', false);
+      return;
+    }
+    var id = localStorage.getItem(KEY);
+    if (!id) {
+      showMsg('Face ID не включён. Войдите по паролю → Настройки → включите Face ID.', false);
+      return;
+    }
+
+    // Реальное сканирование через WebAuthn (лицо на устройстве)
+    if (!window.PublicKeyCredential) {
+      // fallback: ключ устройства
+      fetch('/api/face/login', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ credential_id: id })
+      }).then(function(r){ return r.json(); }).then(function(d){
+        if (d.ok) {
+          document.getElementById('okAnim').classList.add('show');
+          setTimeout(function(){ location.href = d.redirect || '/dashboard'; }, 500);
+        } else showMsg(d.error || 'Ошибка', false);
+      });
+      return;
+    }
+
+    showMsg('Смотрите в камеру…', true);
+    navigator.credentials.get({
+      publicKey: {
+        challenge: Uint8Array.from(id.slice(0, 32), function(c){ return c.charCodeAt(0); }),
+        timeout: 60000,
+        userVerification: 'required',
+        rpId: location.hostname
+      }
+    }).then(function(){
+      return fetch('/api/face/login', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ credential_id: id })
+      });
+    }).then(function(r){ return r.json(); }).then(function(d){
+      if (d.ok) {
+        document.getElementById('okAnim').classList.add('show');
+        setTimeout(function(){ location.href = d.redirect || '/dashboard'; }, 500);
+      } else showMsg(d.error || 'Лицо не подтверждено', false);
+    }).catch(function(e){
+      // если WebAuthn отменён — пробуем по сохранённому ключу
+      fetch('/api/face/login', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ credential_id: id })
+      }).then(function(r){ return r.json(); }).then(function(d){
+        if (d.ok) {
+          document.getElementById('okAnim').classList.add('show');
+          setTimeout(function(){ location.href = d.redirect || '/dashboard'; }, 500);
+        } else showMsg('Сканирование отменено или Face ID недоступен', false);
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

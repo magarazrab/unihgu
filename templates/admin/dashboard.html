@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}Админ-панель — ХГУ Тест{% endblock %}
+
+{% block head %}
+<style>
+.admin-wrap { max-width: 1280px; margin: 0 auto; padding: 0 20px 40px; }
+.admin-wrap .page-header h1 { font-size: 1.85rem; }
+.stats-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 18px; }
+.stat-card { border-top: 3px solid var(--primary); }
+.stat-card .number { font-size: 2.2rem; }
+.ai-box {
+    background: linear-gradient(135deg, #e8f4f8 0%, #f0f7fa 100%);
+    border: 1px solid var(--primary-light);
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin-bottom: 20px;
+}
+[data-theme="dark"] .ai-box {
+    background: linear-gradient(135deg, #1a2d38 0%, #152830 100%);
+}
+.ai-box h3 { color: var(--primary-dark); margin-bottom: 12px; font-size: 1.1rem; }
+.ai-box ul { margin: 0; padding-left: 18px; }
+.ai-box li { margin-bottom: 8px; line-height: 1.45; }
+.admin-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+@media (max-width: 900px) {
+    .admin-grid-2 { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-wrap">
+    <div class="page-header">
+        <h1>Админ-панель</h1>
+        <p>Статистика, заявки, аналитика системы</p>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="number">{{ total_users }}</div>
+            <div class="label">Пользователей</div>
+        </div>
+        <div class="stat-card">
+            <div class="number">{{ pro_users }}</div>
+            <div class="label">С Pro</div>
+        </div>
+        <div class="stat-card">
+            <div class="number">{{ total_tests }}</div>
+            <div class="label">Пройдено тестов</div>
+        </div>
+        <div class="stat-card">
+            <div class="number">{{ pending_requests }}</div>
+            <div class="label">Заявок на Pro</div>
+        </div>
+        <div class="stat-card">
+            <div class="number">{{ avg_pct|default(0) }}%</div>
+            <div class="label">Средний результат</div>
+        </div>
+    </div>
+
+    {% if ai_insights %}
+    <div class="ai-box">
+        <h3>Аналитика системы</h3>
+        <ul>
+            {% for tip in ai_insights %}
+            <li>{{ tip }}</li>
+            {% endfor %}
+        </ul>
+        {% if weak_students %}
+        <p style="margin-top:12px; font-weight:600;">Студенты с низким результатом:</p>
+        <ul>
+            {% for w in weak_students %}
+            <li>{{ w.full_name }} ({{ w.email }}) — {{ (w.pct * 100)|round(0) }}%, тестов: {{ w.cnt }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if notifs %}
+    <div class="card">
+        <div class="card-title">Уведомления</div>
+        <ul class="notif-list">
+            {% for n in notifs %}
+            <li class="notif-item">
+                <div class="title">{{ n.title }}</div>
+                <div class="msg">{{ n.message }}</div>
+                <div class="time">{{ n.created_at[:16] }}</div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if pending %}
+    <div class="card">
+        <div class="card-title">Заявки на Pro (ожидают)</div>
+        <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Студент</th>
+                    <th>Email</th>
+                    <th>Способ</th>
+                    <th>Скриншот</th>
+                    <th>Дата</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pending %}
+                <tr>
+                    <td>{{ p.full_name }}</td>
+                    <td>{{ p.email }}</td>
+                    <td>{{ p.payment_method }}{% if p.package is defined and p.package %} ({{ p.package }}){% endif %}</td>
+                    <td>
+                        {% if p.screenshot_path %}
+                        <a href="{{ url_for('uploaded_file', filename=p.screenshot_path) }}" target="_blank" class="btn btn-outline btn-sm">Открыть</a>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>{{ p.created_at[:16] }}</td>
+                    <td style="white-space:nowrap;">
+                        <form method="POST" action="{{ url_for('admin_pro_action', req_id=p.id, action='approve') }}" style="display:inline;">
+                            <button type="submit" class="btn btn-success btn-sm">Одобрить</button>
+                        </form>
+                        <form method="POST" action="{{ url_for('admin_pro_action', req_id=p.id, action='reject') }}" style="display:inline;">
+                            <input type="hidden" name="note" value="Оплата не подтверждена">
+                            <button type="submit" class="btn btn-danger btn-sm">Отклонить</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="admin-grid-2">
+        <div class="card">
+            <div class="card-title">Отправить уведомление</div>
+            <form method="POST" action="{{ url_for('admin_notify') }}">
+                <div class="form-group">
+                    <label>Заголовок</label>
+                    <input type="text" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label>Текст</label>
+                    <textarea name="message" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Кому</label>
+                    <select name="target">
+                        <option value="all">Всем</option>
+                        <option value="pro">Только Pro</option>
+                        <option value="free">Только без Pro</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Отправить</button>
+            </form>
+        </div>
+        <div class="card">
+            <div class="card-title">Быстрые действия</div>
+            <p style="margin-bottom:12px; color:var(--text-muted);">Резервная копия и списки</p>
+            <a href="{{ url_for('admin_backup') }}" class="btn btn-outline" style="margin-right:8px; margin-bottom:8px;">Скачать БД</a>
+            <a href="{{ url_for('admin_users') }}" class="btn btn-outline" style="margin-right:8px; margin-bottom:8px;">Все пользователи</a>
+            <a href="{{ url_for('admin_results') }}" class="btn btn-outline" style="margin-bottom:8px;">Все результаты</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Последние пользователи</div>
+        <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>ФИО</th>
+                    <th>Email</th>
+                    <th>Pro</th>
+                    <th>Регистрация</th>
+                    <th>Последний вход</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in recent_users %}
+                <tr>
+                    <td>{{ u.full_name }}</td>
+                    <td>{{ u.email }}</td>
+                    <td>{% if u.is_pro %}Да{% if u.pro_until %} (до {{ u.pro_until[:10] }}){% endif %}{% else %}Нет{% endif %}</td>
+                    <td>{{ u.created_at[:10] if u.created_at else '—' }}</td>
+                    <td>{{ u.last_login[:16] if u.last_login else '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Последние результаты</div>
+        <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Студент</th>
+                    <th>Тест</th>
+                    <th>Балл</th>
+                    <th>Правильных</th>
+                    <th>Дата</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in recent_results %}
+                <tr>
+                    <td>{{ r.full_name }}</td>
+                    <td>{{ tests[r.test_id].title.ru if r.test_id in tests else r.test_id }}</td>
+                    <td>{{ r.score }} / {{ r.max_score }}</td>
+                    <td>{{ r.correct }}</td>
+                    <td>{{ r.created_at[:16] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

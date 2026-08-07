@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="{{ lang or 'ru' }}" data-theme="{{ current_user.theme if current_user.is_authenticated else 'light' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a5f7a">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/icon-512.png">
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+    <title>{% block title %}ХГУ Тест{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    {% if current_user.is_authenticated %}
+    <nav class="navbar">
+        <div class="container">
+            <a href="{{ url_for('dashboard') if not current_user.is_admin else url_for('admin_dashboard') }}" class="navbar-brand">
+                ХГУ <span>Тест</span>
+                {% if current_user.is_pro and not current_user.is_admin %}
+                <span class="badge-pro">PRO</span>
+                {% endif %}
+            </a>
+            <div class="nav-links">
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('admin_dashboard') }}">Панель</a>
+                    <a href="{{ url_for('admin_content') }}">Контент</a>
+                    <a href="{{ url_for('admin_stats') }}">Статистика</a>
+                    <a href="{{ url_for('admin_payment') }}">Реквизиты</a>
+                    <a href="{{ url_for('admin_social') }}">Соцсети</a>
+        <a href="{{ url_for('admin_chat') }}" class="{% if request.endpoint == 'admin_chat' %}active{% endif %}">Чат</a>
+                    <a href="{{ url_for('admin_users') }}">Пользователи</a>
+                    <a href="{{ url_for('admin_results') }}">Результаты</a>
+                    <a href="{{ url_for('admin_backup') }}">Бэкап БД</a>
+                {% else %}
+                    <a href="{{ url_for('dashboard') }}">Тесты</a>
+                    <a href="{{ url_for('leaderboard') }}">Мои результаты</a>
+                    <a href="{{ url_for('pro_page') }}">Pro</a>
+                    <a href="{{ url_for('settings') }}">Настройки</a>
+                {% endif %}
+                <a href="{{ url_for('logout') }}">Выход</a>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container">
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
+    <footer class="footer">
+        Худжандский государственный университет им. академика Б. Гафурова &mdash; Подготовка к поступлению
+    </footer>
+
+    <script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').then(function(reg) {
+            {% if current_user.is_authenticated %}
+            setupPush(reg);
+            {% endif %}
+        }).catch(function(){});
+    }
+    function urlBase64ToUint8Array(base64String) {
+        var padding = '='.repeat((4 - base64String.length % 4) % 4);
+        var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        var rawData = window.atob(base64);
+        var outputArray = new Uint8Array(rawData.length);
+        for (var i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+        return outputArray;
+    }
+    function setupPush(reg) {
+        if (!('PushManager' in window) || !window.isSecureContext) return;
+        fetch('/api/push/vapid_public').then(function(r){ return r.json(); }).then(function(data) {
+            if (!data.publicKey) return;
+            return reg.pushManager.getSubscription().then(function(sub) {
+                if (sub) return saveSub(sub);
+                return Notification.requestPermission().then(function(perm) {
+                    if (perm !== 'granted') return;
+                    return reg.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(data.publicKey)
+                    }).then(saveSub);
+                });
+            });
+        }).catch(function(){});
+    }
+    function saveSub(sub) {
+        var j = sub.toJSON();
+        return fetch('/api/push/subscribe', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(j)
+        });
+    }
+    </script>
+    
+    <div id="promo-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;padding:16px;">
+      <div style="background:var(--card-bg,#fff);border-radius:14px;max-width:420px;width:100%;padding:20px;position:relative;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+        <button type="button" id="promo-close" style="position:absolute;right:12px;top:10px;border:none;background:transparent;font-size:1.4rem;cursor:pointer;">&times;</button>
+        <h3 style="margin:0 0 8px;">Подпишитесь на наши соцсети</h3>
+        <p style="font-size:.9rem;color:#666;margin:0 0 12px;">Подпишитесь на все аккаунты, затем нажмите «Подтвердить».</p>
+        <div id="promo-links" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;"></div>
+        <button type="button" id="promo-confirm" class="btn btn-primary" style="width:100%;">Подтвердить</button>
+      </div>
+    </div>
+    <script>
+    (function(){
+      {% if current_user.is_authenticated and not current_user.is_admin %}
+      // не на странице теста
+      if (location.pathname.indexOf('/test/') === 0) return;
+      fetch('/api/promo/status').then(function(r){return r.json()}).then(function(data){
+        if (!data.show || !data.links || !data.links.length) return;
+        var box = document.getElementById('promo-links');
+        data.links.forEach(function(L){
+          var a = document.createElement('a');
+          a.href = L.url; a.target = '_blank'; a.rel = 'noopener';
+          a.className = 'btn btn-outline'; a.style.cssText = 'display:block;text-align:center;';
+          a.textContent = (L.network || 'link') + (L.title ? ' — ' + L.title : '');
+          box.appendChild(a);
+        });
+        var modal = document.getElementById('promo-modal');
+        modal.style.display = 'flex';
+        document.getElementById('promo-close').onclick = function(){ modal.style.display = 'none'; fetch('/api/promo/dismiss',{method:'POST'}); };
+        document.getElementById('promo-confirm').onclick = function(){
+          fetch('/api/promo/subscribe',{method:'POST'}).then(function(){ modal.style.display = 'none'; });
+        };
+      }).catch(function(){});
+      {% endif %}
+    })();
+    </script>
+
+    {% block scripts %}{% endblock %}
+
+{% if current_user.is_authenticated %}
+<script>
+(function(){
+  function beat(){ try{ fetch('/api/heartbeat',{method:'POST'}); }catch(e){} }
+  beat();
+  setInterval(beat, 30000);
+})();
+</script>
+{% if not current_user.is_admin %}
+<!-- student chat widget -->
+<div id="stu-chat-btn" style="position:fixed;right:16px;bottom:16px;z-index:9000;background:#1a5f7a;color:#fff;border-radius:50%;width:52px;height:52px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2);font-size:1.4rem;">💬</div>
+<div id="stu-chat-panel" style="display:none;position:fixed;right:16px;bottom:80px;width:300px;max-width:92vw;height:360px;background:#fff;border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.2);z-index:9001;flex-direction:column;overflow:hidden;">
+  <div style="background:#1a5f7a;color:#fff;padding:10px 12px;font-weight:600;">Чат с админом <span id="stu-chat-x" style="float:right;cursor:pointer;">×</span></div>
+  <div id="stu-chat-msgs" style="flex:1;overflow:auto;padding:10px;background:#f7f9fc;height:260px;"></div>
+  <form id="stu-chat-form" style="display:flex;gap:6px;padding:8px;border-top:1px solid #eee;">
+    <input id="stu-chat-input" type="text" placeholder="Сообщение..." style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;">
+    <button type="submit" style="background:#1a5f7a;color:#fff;border:none;border-radius:8px;padding:8px 12px;">➤</button>
+  </form>
+</div>
+<script>
+(function(){
+  var open = false;
+  var btn = document.getElementById('stu-chat-btn');
+  var panel = document.getElementById('stu-chat-panel');
+  function load(){
+    fetch('/api/chat/messages').then(function(r){return r.json()}).then(function(d){
+      var box = document.getElementById('stu-chat-msgs');
+      box.innerHTML = '';
+      (d.messages||[]).forEach(function(m){
+        var div = document.createElement('div');
+        div.style.cssText = 'margin:6px 0;text-align:'+(m.mine?'right':'left');
+        div.innerHTML = '<span style="display:inline-block;max-width:85%;padding:7px 10px;border-radius:12px;background:'+(m.mine?'#1a5f7a':'#fff')+';color:'+(m.mine?'#fff':'#333')+';font-size:.9rem;">'+(m.body||'').replace(/</g,'&lt;')+'</span>';
+        box.appendChild(div);
+      });
+      box.scrollTop = box.scrollHeight;
+    });
+  }
+  btn.onclick = function(){ open = !open; panel.style.display = open ? 'flex' : 'none'; if(open) load(); };
+  document.getElementById('stu-chat-x').onclick = function(){ open=false; panel.style.display='none'; };
+  document.getElementById('stu-chat-form').onsubmit = function(e){
+    e.preventDefault();
+    var inp = document.getElementById('stu-chat-input');
+    var body = (inp.value||'').trim();
+    if(!body) return;
+    fetch('/api/chat/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({body:body})})
+      .then(function(){ inp.value=''; load(); });
+  };
+  setInterval(function(){ if(open) load(); }, 5000);
+  // badge unread
+  function badge(){
+    fetch('/api/chat/unread_count').then(function(r){return r.json()}).then(function(d){
+      if(d.count>0){ btn.innerHTML = '💬<span style="position:absolute;top:-2px;right:-2px;background:#e74c3c;color:#fff;border-radius:10px;font-size:.7rem;padding:1px 5px;">'+d.count+'</span>'; }
+      else btn.innerHTML = '💬';
+    }).catch(function(){});
+  }
+  badge(); setInterval(badge, 15000);
+})();
+</script>
+{% endif %}
+{% endif %}
+
+</body>
+</html>

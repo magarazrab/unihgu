@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Тесты — ХГУ Тест{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>
+            {% if lang == 'en' %}Hello{% elif lang == 'tg' %}Салом{% else %}Здравствуйте{% endif %},
+            {{ current_user.full_name.split()[0] }}
+        </h1>
+        <p>
+            {% if is_pro %}
+                {% if lang == 'en' %}Pro active until{% elif lang == 'tg' %}Pro фаъол то{% else %}Pro активен до{% endif %}
+                {{ pro_until[:10] if pro_until else '' }}
+            {% else %}
+                {% if lang == 'en' %}Free mode. Unlock Pro for more tests.{% elif lang == 'tg' %}Режими ройгон. Барои тестҳои бештар Pro-ро кушоед.{% else %}Бесплатный режим. Откройте Pro для большего количества тестов.{% endif %}
+            {% endif %}
+        </p>
+    </div>
+
+    {% if notifs %}
+    <div class="card">
+        <div class="card-title">{% if lang == 'en' %}Notifications{% elif lang == 'tg' %}Огоҳиномаҳо{% else %}Уведомления{% endif %}</div>
+        <ul class="notif-list">
+            {% for n in notifs %}
+            <li class="notif-item">
+                <div class="title">{{ n.title }}</div>
+                <div class="msg">{{ n.message }}</div>
+                <div class="time">{{ n.created_at[:16] }}</div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-title">
+            {% if lang == 'en' %}Available tests{% elif lang == 'tg' %}Тестҳои дастрас{% else %}Доступные тесты{% endif %}
+        </div>
+        <div class="grid grid-2">
+            {% for tid, t in tests.items() %}
+            <div class="test-card">
+                {% if t.pro_only %}
+                <span class="pro-badge">PRO</span>
+                {% endif %}
+                <h3>{{ t.subject_name if t.subject_name is defined and t.subject_name else (t.title[lang] if lang in t.title else t.title.ru) }}</h3>
+                <p>
+                    {{ t.questions|length }}
+                    {% if lang == 'en' %}questions{% elif lang == 'tg' %}савол{% else %}вопросов{% endif %}
+                    &middot;
+                    0–100 · {{ (t.time_limit / 60)|int }}
+                    {% if lang == 'en' %}min{% elif lang == 'tg' %}дақ{% else %}мин{% endif %}
+                </p>
+                {% if t.exam_done is defined and t.exam_done %}
+                <p style="color:#2a9d8f;font-size:.9rem;margin:8px 0;">
+                    {% if lang == 'en' %}Already completed{% elif lang == 'tg' %}Аллакай супоридаед{% else %}Вы уже прошли экзамен{% endif %}
+                </p>
+                <button type="button" class="btn btn-primary btn-sm" disabled>
+                    {% if lang == 'en' %}Completed{% elif lang == 'tg' %}Супорида шуд{% else %}Пройдено{% endif %}
+                </button>
+                {% elif t.exam_status is defined and t.exam_status == 'upcoming' %}
+                <p style="color:#c0392b;font-size:.9rem;margin:8px 0;">
+                    {% if lang == 'en' %}Opens{% elif lang == 'tg' %}Оғоз{% else %}Открытие{% endif %}:
+                    {{ t.exam_start_fmt }}
+                    {% if t.exam_end_fmt %} — {{ t.exam_end_fmt }}{% endif %}
+                </p>
+                <button type="button" class="btn btn-primary btn-sm" disabled>
+                    {% if lang == 'en' %}Not started yet{% elif lang == 'tg' %}Ҳанӯз оғоз нашудааст{% else %}Ещё не начался{% endif %}
+                </button>
+                {% else %}
+                {% if t.exam_start_fmt or t.exam_end_fmt %}
+                <p style="color:#1a5f7a;font-size:.85rem;margin:6px 0;">
+                    {% if lang == 'en' %}Window{% elif lang == 'tg' %}Вақт{% else %}Окно{% endif %}:
+                    {{ t.exam_start_fmt or '…' }} — {{ t.exam_end_fmt or '…' }}
+                </p>
+                {% endif %}
+                <a href="{{ url_for('start_test', test_id=tid, mode='exam') }}" class="btn btn-primary btn-sm">
+                    {% if lang == 'en' %}Exam{% elif lang == 'tg' %}Имтиҳон{% else %}Экзамен{% endif %}
+                </a>
+                {% endif %}
+                {% if is_pro %}
+                <a href="{{ url_for('start_test', test_id=tid, mode='practice') }}" class="btn btn-outline btn-sm">
+                    {% if lang == 'en' %}Practice{% elif lang == 'tg' %}Машқ{% else %}Тренировка{% endif %}
+                </a>
+                {% endif %}
+            </div>
+            {% else %}
+            <p>{% if lang == 'en' %}No tests available{% elif lang == 'tg' %}Тест нест{% else %}Нет тестов. Админ добавит их в разделе Контент{% endif %}</p>
+            {% endfor %}
+        </div>
+        {% if not is_pro %}
+        <p style="margin-top:16px; font-size:0.9rem; color:#6c757d;">
+            {% if lang == 'en' %}More advanced tests available in{% elif lang == 'tg' %}Тестҳои пешрафта дар{% else %}Продвинутые тесты доступны в{% endif %}
+            <a href="{{ url_for('pro_page') }}">Pro</a>
+        </p>
+        {% endif %}
+    </div>
+
+    {% if results %}
+    <div class="card">
+        <div class="card-title">
+            {% if lang == 'en' %}Recent results{% elif lang == 'tg' %}Натиҷаҳои охирин{% else %}Последние результаты{% endif %}
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>{% if lang == 'en' %}Test{% elif lang == 'tg' %}Тест{% else %}Тест{% endif %}</th>
+                    <th>{% if lang == 'en' %}Score{% elif lang == 'tg' %}Хол{% else %}Балл{% endif %}</th>
+                    <th>{% if lang == 'en' %}Date{% elif lang == 'tg' %}Сана{% else %}Дата{% endif %}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in results %}
+                <tr>
+                    <td>{{ tests[r.test_id].title[lang] if r.test_id in tests and lang in tests[r.test_id].title else r.test_id }}</td>
+                    <td>{{ r.score }} / {{ r.max_score }}</td>
+                    <td>{{ r.created_at[:16] }}</td>
+                    <td><a href="{{ url_for('view_result', result_id=r.id) }}" class="btn btn-outline btn-sm">
+                        {% if lang == 'en' %}View{% elif lang == 'tg' %}Дидан{% else %}Смотреть{% endif %}
+                    </a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+{% if show_instagram %}
+<div class="modal-overlay" id="instagramModal">
+    <div class="modal">
+        <h2>
+            {% if lang == 'en' %}Get 2 days of Pro free{% elif lang == 'tg' %}2 рӯз Pro ройгон гиред{% else %}Получите 2 дня Pro бесплатно{% endif %}
+        </h2>
+        <p>
+            {% if lang == 'en' %}Subscribe to our Instagram and get free Pro access for 2 days.{% elif lang == 'tg' %}Ба Instagram-и мо обуна шавед ва 2 рӯз Pro ройгон гиред.{% else %}Подпишитесь на наш Instagram и получите бесплатный доступ к Pro на 2 дня.{% endif %}
+        </p>
+        <div class="modal-actions">
+            <a href="{{ instagram_url }}" target="_blank" class="btn btn-primary" id="subBtn">
+                {% if lang == 'en' %}Subscribe{% elif lang == 'tg' %}Обуна шудан{% else %}Подписаться{% endif %}
+            </a>
+            <form method="POST" action="{{ url_for('claim_instagram_pro') }}" style="display:inline;" id="claimForm">
+                <button type="submit" class="btn btn-success" id="claimBtn" style="display:none;">
+                    {% if lang == 'en' %}I subscribed{% elif lang == 'tg' %}Ман обуна шудам{% else %}Я подписался{% endif %}
+                </button>
+            </form>
+            <button class="btn btn-outline" onclick="document.getElementById('instagramModal').style.display='none'">
+                {% if lang == 'en' %}Later{% elif lang == 'tg' %}Баъдтар{% else %}Позже{% endif %}
+            </button>
+        </div>
+    </div>
+</div>
+<script>
+document.getElementById('subBtn').addEventListener('click', function() {
+    setTimeout(function() {
+        document.getElementById('claimBtn').style.display = 'inline-block';
+    }, 1500);
+});
+</script>
+{% endif %}
+{% endblock %}
